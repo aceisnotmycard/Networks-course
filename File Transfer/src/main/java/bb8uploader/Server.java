@@ -1,38 +1,30 @@
 package bb8uploader;
 
-import java.io.File;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
 
-
+/**
+ * Created by aceisnotmycard on 4/21/15.
+ */
 public class Server {
-    ActionFacade facade;
+    ServerSocket socket;
 
-    private static final String UPLOAD_DIRECTORY = "upload/";
-
-    public Server(Socket socket) {
-        facade = new ActionFacade(socket);
-    }
-
-    public void listen() {
-        if (facade.dialog.receiveAndCompareHeader()) {
-            System.out.println("Client connected");
+    public Server(int port) {
+        try {
+            socket = new ServerSocket(port);
             while (true) {
-                if (facade.dialog.receiveActionCode() == ActionFacade.ActionCode.BYE.getValue()) {
-                    System.out.println("Client disconnected");
-                    return;
+                Socket accepted = socket.accept();
+                FileKeeper keeper = new FileKeeper(accepted, "upload/");
+                if (keeper.exec()) {
+                    System.out.println("Successfully received file");
+                } else {
+                    System.out.println("Something went wrong");
                 }
-                if (facade.dialog.receiveActionCode() == ActionFacade.ActionCode.UPLOAD.getValue()) {
-                    System.err.println("Client is trying to upload file");
-                    String filename = facade.dialog.receiveMessage();
-                    File file = new File(UPLOAD_DIRECTORY + filename);
-                    System.out.println("Uploading " + filename + "...");
-                    facade.dialog.receiveFile(file);
-                    if (facade.dialog.receiveCommit()) {
-                        facade.dialog.sendMessage("Upload successful");
-                        System.out.println("Done.");
-                    }
-                }
+                accepted.close();
             }
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
         }
     }
 }
